@@ -1,3 +1,11 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.localelive.space" }],
+      "destination": "https://localelive.space/:path*",
+      "permanent": true
+    }
+  ]
 }
