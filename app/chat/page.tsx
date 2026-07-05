@@ -23,7 +23,7 @@ const ChatProvider = () => {
   }, [])
 
   return (
-    <TourProvider startTour={startTour}>
+    <TourProvider startTour={startTour} isTourActive={tourRun}>
       <LocationProvider>
         <ChatContext.Provider value={provider}>
           <MapProvider>

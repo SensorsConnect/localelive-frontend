@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { useGeolocated } from 'react-geolocated'
+import { useTourContext } from '@/components/Tour/TourContext'
+
+// Delay before showing the "switch to precise GPS" hint, so it doesn't flash
+// immediately while the app is still settling on a location.
+const LOCATION_HINT_DELAY_MS = 3000
 
 export interface LocationData {
   latitude: number | null
@@ -39,6 +44,7 @@ export const LocationProvider = ({ children }: LocationProviderProps) => {
   const [error, setError] = useState<string | null>(null)
   const [permission, setPermission] = useState<PermissionState | null>(null)
   const [showLocationHint, setShowLocationHint] = useState(false)
+  const { isTourActive } = useTourContext()
 
   // Promise resolver for requestLocation()
   const resolveRef = useRef<((value: LocationData | null) => void) | null>(null)
@@ -118,8 +124,8 @@ export const LocationProvider = ({ children }: LocationProviderProps) => {
   }, [positionError])
 
   // On mount: load cached location, check GPS permission, then decide what to fetch.
-  // If GPS is already granted, silently request it in background (non-blocking).
-  // IP lookup runs in parallel when no cache exists so the map loads immediately.
+  // If GPS is already granted, fetch it directly (no IP lookup needed). Otherwise,
+  // fall back to IP-based location right away so the map loads immediately.
   useEffect(() => {
     let cleanup: (() => void) | undefined
     const cached = loadCachedLocation()
@@ -127,10 +133,11 @@ export const LocationProvider = ({ children }: LocationProviderProps) => {
     checkPermissions().then(({ cleanup: c, state: permState }) => {
       cleanup = c
       if (permState === 'granted') {
-        // Permission already granted — silently fetch GPS without a browser dialog
+        // Permission already granted — get precise GPS location without a browser
+        // dialog. IP fallback only fires if GPS then fails (see positionError effect).
         getPosition()
-      }
-      if (!cached) {
+      } else if (!cached) {
+        // No GPS permission yet — use approximate IP-based location right away.
         requestNetworkLocation()
       }
     })
@@ -145,6 +152,18 @@ export const LocationProvider = ({ children }: LocationProviderProps) => {
       setIsLoading(true)
     }
   }, [coords, isGeolocationEnabled, positionError])
+
+  // Show the "switch to precise GPS" hint only once we're settled on an approximate
+  // (IP-based) location, after a short delay, and never while the onboarding tour is
+  // active (its first step targets the same button).
+  useEffect(() => {
+    if (isTourActive || location?.source !== 'network') {
+      setShowLocationHint(false)
+      return
+    }
+    const t = setTimeout(() => setShowLocationHint(true), LOCATION_HINT_DELAY_MS)
+    return () => clearTimeout(t)
+  }, [location?.source, isTourActive])
 
   const checkPermissions = async (): Promise<{ cleanup?: () => void; state: PermissionState | null }> => {
     if ('permissions' in navigator) {
@@ -201,10 +220,6 @@ export const LocationProvider = ({ children }: LocationProviderProps) => {
         setLocation(locationData)
         cacheLocation(locationData)
         setIsLoading(false)
-        // Show hint only when GPS isn't already being auto-fetched
-        if (permission !== 'granted') {
-          setShowLocationHint(true)
-        }
         return locationData
       }
     } catch (err) {
