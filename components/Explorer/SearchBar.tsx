@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useContext, useEffect } from 'react'
 import { FiSearch, FiSend, FiMenu } from 'react-icons/fi'
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import toast from 'react-hot-toast'
+import { v4 as uuid } from 'uuid'
 import { useAuth } from '@clerk/nextjs'
 import { useMapContext } from './MapContext'
 import ChatContext from '../Chat/chatContext'
@@ -71,9 +72,14 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
     console.log(`[SearchBar] query="${query.slice(0, 60)}" hasLocation=${!!effectiveLocation}`)
 
     try {
+      const threadId = currentChatRef?.current?.id ?? uuid()
+      if (currentChatRef && !currentChatRef.current) {
+        currentChatRef.current = { id: threadId }
+      }
+
       const token = await getToken()
       const data: any = {
-        threadId: currentChatRef?.current?.id,
+        threadId,
         text: query,
         location: effectiveLocation,
       }
@@ -98,9 +104,16 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
         setActivePlaces(places)
         if (userLoc) setActiveUserLocation(userLoc)
       } else {
-        const result = await response.json()
-        console.log(`[SearchBar] error ${response.status}: ${result.error}`)
-        toast.error(result.error || 'An error occurred')
+        const result = await response.json().catch(() => ({}))
+        const message = typeof result.error === 'string'
+          ? result.error
+          : typeof result.detail === 'string'
+            ? result.detail
+            : Array.isArray(result.detail)
+              ? result.detail.map((d: any) => d.msg).join('; ')
+              : `Request failed (${response.status})`
+        console.log(`[SearchBar] error ${response.status}: ${message}`)
+        toast.error(message)
       }
     } catch (error: any) {
       console.error('[SearchBar] fetch error:', error.message)

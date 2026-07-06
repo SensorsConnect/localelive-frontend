@@ -4,6 +4,7 @@ import { useState, useCallback, useContext, useRef, useEffect } from 'react'
 import { FiSearch, FiSend, FiMenu } from 'react-icons/fi'
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 import toast from 'react-hot-toast'
+import { v4 as uuid } from 'uuid'
 import { useAuth } from '@clerk/nextjs'
 import { useMapContext } from './MapContext'
 import ChatContext from '../Chat/chatContext'
@@ -85,6 +86,11 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
     console.log(`[MobileSheet] query="${query.slice(0, 60)}" hasLocation=${!!effectiveLocation}`)
 
     try {
+      const threadId = currentChatRef?.current?.id ?? uuid()
+      if (currentChatRef && !currentChatRef.current) {
+        currentChatRef.current = { id: threadId }
+      }
+
       const token = await getToken()
       const response = await fetch(`${config.apiUrl}/api/v1/query`, {
         method: 'PUT',
@@ -93,7 +99,7 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          threadId: currentChatRef?.current?.id,
+          threadId,
           text: query,
           location: effectiveLocation,
         }),
@@ -107,9 +113,16 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
         setActivePlaces(places)
         if (parsed.userLocation) setActiveUserLocation(parsed.userLocation)
       } else {
-        const result = await response.json()
-        console.log(`[MobileSheet] error ${response.status}: ${result.error}`)
-        toast.error(result.error || 'An error occurred')
+        const result = await response.json().catch(() => ({}))
+        const message = typeof result.error === 'string'
+          ? result.error
+          : typeof result.detail === 'string'
+            ? result.detail
+            : Array.isArray(result.detail)
+              ? result.detail.map((d: any) => d.msg).join('; ')
+              : `Request failed (${response.status})`
+        console.log(`[MobileSheet] error ${response.status}: ${message}`)
+        toast.error(message)
       }
     } catch (error: any) {
       console.error('[MobileSheet] fetch error:', error.message)
