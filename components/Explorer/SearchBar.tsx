@@ -145,6 +145,12 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
           ref={inputRef}
           data-tour="search-input"
           type="text"
+          name="search"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          inputMode="search"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

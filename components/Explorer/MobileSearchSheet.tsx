@@ -56,6 +56,22 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
   }, [contextLocation])
   const containerRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [keyboardOffset, setKeyboardOffset] = useState(0)
+
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () => {
+      const kbHeight = window.innerHeight - vv.height - vv.offsetTop
+      setKeyboardOffset(Math.max(0, kbHeight))
+    }
+    vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onResize)
+    return () => {
+      vv.removeEventListener('resize', onResize)
+      vv.removeEventListener('scroll', onResize)
+    }
+  }, [])
 
   const hasResults = !!(aiResponse || activePlaces.length > 0)
 
@@ -150,7 +166,7 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
       ref={containerRef}
       data-mobile-sheet
       className="absolute bottom-0 left-0 right-0 z-20 flex flex-col min-h-0 md:hidden bg-white/95 dark:bg-surface/95 md:backdrop-blur-xl border-t border-gray-200 dark:border-white/10 transition-[height] duration-200"
-      style={{ height: hasResults ? `${100 - mobileMapRatio}%` : '56px' }}
+      style={{ height: hasResults ? `${100 - mobileMapRatio}%` : '56px', bottom: keyboardOffset }}
     >
       {/* Drag handle — only when results are showing */}
       {hasResults && (
@@ -173,6 +189,12 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
           <input
             data-tour="mobile-search-input"
             type="text"
+            name="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            inputMode="search"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
