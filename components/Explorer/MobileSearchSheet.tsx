@@ -18,6 +18,9 @@ interface MobileSearchSheetProps {
   onToggleHistory: () => void
 }
 
+const SEARCH_BAR_HEIGHT_PX = 56
+const SEARCH_BAR_BOTTOM_PADDING_PX = 16
+
 export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheetProps) {
   const [input, setInput] = useState('')
   const { getToken } = useAuth()
@@ -55,25 +58,54 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextLocation])
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [keyboardOffset, setKeyboardOffset] = useState(0)
 
   useEffect(() => {
     const vv = window.visualViewport
-    if (!vv) return
-    const onResize = () => {
-      const kbHeight = window.innerHeight - vv.height - vv.offsetTop
-      setKeyboardOffset(Math.max(0, kbHeight))
+    if (!vv) {
+      setKeyboardOffset(0)
+      return
     }
-    vv.addEventListener('resize', onResize)
-    vv.addEventListener('scroll', onResize)
+
+    let delayedUpdate: ReturnType<typeof setTimeout> | null = null
+
+    const updateKeyboardOffset = () => {
+      const parentBottom = containerRef.current?.parentElement?.getBoundingClientRect().bottom ?? window.innerHeight
+      const visualViewportBottom = vv.offsetTop + vv.height
+      const overlap = Math.max(0, parentBottom - visualViewportBottom)
+      setKeyboardOffset(overlap)
+    }
+
+    const scheduleKeyboardOffsetUpdate = () => {
+      updateKeyboardOffset()
+      if (delayedUpdate) clearTimeout(delayedUpdate)
+      delayedUpdate = setTimeout(updateKeyboardOffset, 250)
+    }
+
+    const input = inputRef.current
+    updateKeyboardOffset()
+    vv.addEventListener('resize', updateKeyboardOffset)
+    vv.addEventListener('scroll', updateKeyboardOffset)
+    window.addEventListener('resize', updateKeyboardOffset)
+    input?.addEventListener('focus', scheduleKeyboardOffsetUpdate)
+    input?.addEventListener('blur', scheduleKeyboardOffsetUpdate)
+
     return () => {
-      vv.removeEventListener('resize', onResize)
-      vv.removeEventListener('scroll', onResize)
+      if (delayedUpdate) clearTimeout(delayedUpdate)
+      vv.removeEventListener('resize', updateKeyboardOffset)
+      vv.removeEventListener('scroll', updateKeyboardOffset)
+      window.removeEventListener('resize', updateKeyboardOffset)
+      input?.removeEventListener('focus', scheduleKeyboardOffsetUpdate)
+      input?.removeEventListener('blur', scheduleKeyboardOffsetUpdate)
     }
   }, [])
 
   const hasResults = !!(aiResponse || activePlaces.length > 0)
+  const idleSheetHeight = keyboardOffset > 0
+    ? `${SEARCH_BAR_HEIGHT_PX + SEARCH_BAR_BOTTOM_PADDING_PX}px`
+    : `calc(${SEARCH_BAR_HEIGHT_PX + SEARCH_BAR_BOTTOM_PADDING_PX}px + env(safe-area-inset-bottom, 0px))`
 
   // Auto-scroll to the selected card when a pin is tapped
   useEffect(() => {
@@ -166,7 +198,7 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
       ref={containerRef}
       data-mobile-sheet
       className="absolute bottom-0 left-0 right-0 z-20 flex flex-col min-h-0 md:hidden bg-white/95 dark:bg-surface/95 md:backdrop-blur-xl border-t border-gray-200 dark:border-white/10 transition-[height] duration-200"
-      style={{ height: hasResults ? `${100 - mobileMapRatio}%` : '56px', bottom: keyboardOffset }}
+      style={{ height: hasResults ? `${100 - mobileMapRatio}%` : idleSheetHeight, bottom: keyboardOffset }}
     >
       {/* Drag handle — only when results are showing */}
       {hasResults && (
@@ -195,6 +227,7 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
         >
           <FiSearch className="size-4 text-gray-400 dark:text-gray-500" />
           <input
+            ref={inputRef}
             data-tour="mobile-search-input"
             type="search"
             name="q"
