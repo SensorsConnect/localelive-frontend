@@ -55,7 +55,7 @@ export const Header = () => {
             size="2"
             radius="full"
             fallback={
-              <Link href="https://github.com/SensorsConnect">
+              <Link href="https://github.com/SensorsConnect/IoT-Agentic-Search-Engine">
                 <FaGithub className="text-gray-600 dark:text-gray-400" />
               </Link>
             }
