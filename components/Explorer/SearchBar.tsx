@@ -123,18 +123,20 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
     }
   }, [input, isQuerying, contextLocation, getToken, currentChatRef, setActivePlaces, setActiveUserLocation, setAiResponse, setIsQuerying, setSelectedPlaceId])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }, [handleSubmit])
-
   return (
     <div className="hidden md:block absolute top-4 left-4 md:w-[340px] lg:w-[420px] z-20">
       {/* Search input */}
-      <div className="glass-panel flex items-center gap-3 px-4 py-3 focus-within:border-blue-400/50 dark:focus-within:border-neon-cyan/50 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all">
+      <form
+        role="search"
+        autoComplete="off"
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleSubmit()
+        }}
+        className="glass-panel flex items-center gap-3 px-4 py-3 focus-within:border-blue-400/50 dark:focus-within:border-neon-cyan/50 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all"
+      >
         <button
+          type="button"
           onClick={onToggleHistory}
           className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
         >
@@ -144,23 +146,28 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
         <input
           ref={inputRef}
           data-tour="search-input"
-          type="text"
-          name="search"
+          type="search"
+          name="q"
+          aria-label="Search places"
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="none"
           spellCheck={false}
           inputMode="search"
+          enterKeyHint="search"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-bwignore="true"
+          data-form-type="other"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Search for places, services..."
           disabled={isQuerying}
           className="flex-1 bg-transparent text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm"
         />
         <button
+          type="submit"
           data-tour="search-submit"
-          onClick={() => handleSubmit()}
           disabled={isQuerying || !input.trim()}
           className="text-blue-600 dark:text-neon-cyan hover:text-blue-500 dark:hover:text-cyan-300 disabled:text-gray-400 dark:disabled:text-gray-600 transition-colors flex-shrink-0"
         >
@@ -170,7 +177,7 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
             <FiSend className="size-4" />
           )}
         </button>
-      </div>
+      </form>
 
       {/* Suggestion chips */}
       <div className="flex gap-2 mt-2 flex-wrap">

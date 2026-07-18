@@ -181,34 +181,47 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
 
       {/* Search input */}
       <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0">
-        <button onClick={onToggleHistory} className="text-gray-500 dark:text-gray-400">
+        <button type="button" onClick={onToggleHistory} className="text-gray-500 dark:text-gray-400">
           <FiMenu className="size-5" />
         </button>
-        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+        <form
+          role="search"
+          autoComplete="off"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSubmit()
+          }}
+          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10"
+        >
           <FiSearch className="size-4 text-gray-400 dark:text-gray-500" />
           <input
             data-tour="mobile-search-input"
-            type="text"
-            name="search"
+            type="search"
+            name="q"
+            aria-label="Search places"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
             inputMode="search"
+            enterKeyHint="search"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-bwignore="true"
+            data-form-type="other"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder="Search places..."
             className="flex-1 bg-transparent text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm"
           />
-          <button data-tour="mobile-search-submit" onClick={handleSubmit} disabled={isQuerying} className="text-blue-600 dark:text-neon-cyan">
+          <button type="submit" data-tour="mobile-search-submit" disabled={isQuerying} className="text-blue-600 dark:text-neon-cyan">
             {isQuerying ? (
               <AiOutlineLoading3Quarters className="size-4 animate-spin" />
             ) : (
               <FiSend className="size-4" />
             )}
           </button>
-        </div>
+        </form>
       </div>
 
       {/* Scrollable content area */}
