@@ -10,6 +10,7 @@ import { useMapContext } from './MapContext'
 import ChatContext from '../Chat/chatContext'
 import { useLocation } from '@/components/Location'
 import { config } from '@/utils/environment'
+import { useAutoResizeTextarea } from '@/hooks/useAutoResizeTextarea'
 
 const SUGGESTIONS = [
   'Restaurants nearby',
@@ -18,13 +19,15 @@ const SUGGESTIONS = [
   'Coffee shops',
 ]
 
+const TEXTAREA_MAX_HEIGHT_PX = 128
+
 interface SearchBarProps {
   onToggleHistory: () => void
 }
 
 export default function SearchBar({ onToggleHistory }: SearchBarProps) {
   const [input, setInput] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const { getToken } = useAuth()
   const { location: contextLocation } = useLocation()
   const { activeUserLocation, setActivePlaces, setActiveUserLocation, setAiResponse, isQuerying, setIsQuerying, setSelectedPlaceId, pendingQuery, setPendingQuery } = useMapContext()
@@ -123,6 +126,15 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
     }
   }, [input, isQuerying, contextLocation, getToken, currentChatRef, setActivePlaces, setActiveUserLocation, setAiResponse, setIsQuerying, setSelectedPlaceId])
 
+  useAutoResizeTextarea(inputRef, input, TEXTAREA_MAX_HEIGHT_PX)
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }, [handleSubmit])
+
   return (
     <div className="hidden md:block absolute top-4 left-4 md:w-[340px] lg:w-[420px] z-20">
       {/* Search input */}
@@ -133,7 +145,7 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
           e.preventDefault()
           handleSubmit()
         }}
-        className="glass-panel flex items-center gap-3 px-4 py-3 focus-within:border-blue-400/50 dark:focus-within:border-neon-cyan/50 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all"
+        className="glass-panel flex items-end gap-3 px-4 py-3 focus-within:border-blue-400/50 dark:focus-within:border-neon-cyan/50 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all"
       >
         <button
           type="button"
@@ -143,11 +155,11 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
           <FiMenu className="size-5" />
         </button>
         <FiSearch className="size-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-        <input
+        <textarea
           ref={inputRef}
           data-tour="search-input"
-          type="search"
           name="q"
+          rows={1}
           aria-label="Search places"
           autoComplete="off"
           autoCorrect="off"
@@ -161,9 +173,11 @@ export default function SearchBar({ onToggleHistory }: SearchBarProps) {
           data-form-type="other"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Search for places, services..."
           disabled={isQuerying}
-          className="flex-1 bg-transparent text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm"
+          style={{ maxHeight: TEXTAREA_MAX_HEIGHT_PX }}
+          className="flex-1 bg-transparent resize-none overflow-y-auto dark-scrollbar text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm leading-5"
         />
         <button
           type="submit"

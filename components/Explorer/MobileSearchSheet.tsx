@@ -13,13 +13,15 @@ import { config } from '@/utils/environment'
 import PlaceCard from '../PlaceCard/PlaceCard'
 import { Markdown } from '@/components'
 import { useTheme } from '@/components/Themes'
+import { useAutoResizeTextarea } from '@/hooks/useAutoResizeTextarea'
 
 interface MobileSearchSheetProps {
   onToggleHistory: () => void
 }
 
-const SEARCH_BAR_HEIGHT_PX = 56
+const DEFAULT_SEARCH_ROW_HEIGHT_PX = 56
 const SEARCH_BAR_BOTTOM_PADDING_PX = 16
+const TEXTAREA_MAX_HEIGHT_PX = 128
 
 export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheetProps) {
   const [input, setInput] = useState('')
@@ -58,9 +60,11 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextLocation])
   const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const searchRowRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [keyboardOffset, setKeyboardOffset] = useState(0)
+  const [searchRowHeight, setSearchRowHeight] = useState(DEFAULT_SEARCH_ROW_HEIGHT_PX)
 
   useEffect(() => {
     const vv = window.visualViewport
@@ -102,10 +106,23 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
     }
   }, [])
 
+  useAutoResizeTextarea(inputRef, input, TEXTAREA_MAX_HEIGHT_PX)
+
+  useEffect(() => {
+    const el = searchRowRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      const height = el.getBoundingClientRect().height
+      if (height) setSearchRowHeight(Math.ceil(height))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const hasResults = !!(aiResponse || activePlaces.length > 0)
   const idleSheetHeight = keyboardOffset > 0
-    ? `${SEARCH_BAR_HEIGHT_PX + SEARCH_BAR_BOTTOM_PADDING_PX}px`
-    : `calc(${SEARCH_BAR_HEIGHT_PX + SEARCH_BAR_BOTTOM_PADDING_PX}px + env(safe-area-inset-bottom, 0px))`
+    ? `${searchRowHeight + SEARCH_BAR_BOTTOM_PADDING_PX}px`
+    : `calc(${searchRowHeight + SEARCH_BAR_BOTTOM_PADDING_PX}px + env(safe-area-inset-bottom, 0px))`
 
   // Auto-scroll to the selected card when a pin is tapped
   useEffect(() => {
@@ -180,6 +197,13 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
     }
   }, [input, isQuerying, contextLocation, getToken, currentChatRef, setActivePlaces, setActiveUserLocation, setAiResponse, setIsQuerying, setSelectedPlaceId, setMobileMapRatio])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }, [handleSubmit])
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
   }, [])
@@ -212,8 +236,8 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
       )}
 
       {/* Search input */}
-      <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0">
-        <button type="button" onClick={onToggleHistory} className="text-gray-500 dark:text-gray-400">
+      <div ref={searchRowRef} className="flex items-end gap-2 px-4 py-2 flex-shrink-0">
+        <button type="button" onClick={onToggleHistory} className="text-gray-500 dark:text-gray-400 flex-shrink-0">
           <FiMenu className="size-5" />
         </button>
         <form
@@ -223,14 +247,14 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
             e.preventDefault()
             handleSubmit()
           }}
-          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10"
+          className="flex-1 flex items-end gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10"
         >
-          <FiSearch className="size-4 text-gray-400 dark:text-gray-500" />
-          <input
+          <FiSearch className="size-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <textarea
             ref={inputRef}
             data-tour="mobile-search-input"
-            type="search"
             name="q"
+            rows={1}
             aria-label="Search places"
             autoComplete="off"
             autoCorrect="off"
@@ -244,10 +268,12 @@ export default function MobileSearchSheet({ onToggleHistory }: MobileSearchSheet
             data-form-type="other"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search places..."
-            className="flex-1 bg-transparent text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm"
+            style={{ maxHeight: TEXTAREA_MAX_HEIGHT_PX }}
+            className="flex-1 bg-transparent resize-none overflow-y-auto dark-scrollbar text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none text-sm leading-5"
           />
-          <button type="submit" data-tour="mobile-search-submit" disabled={isQuerying} className="text-blue-600 dark:text-neon-cyan">
+          <button type="submit" data-tour="mobile-search-submit" disabled={isQuerying} className="text-blue-600 dark:text-neon-cyan flex-shrink-0">
             {isQuerying ? (
               <AiOutlineLoading3Quarters className="size-4 animate-spin" />
             ) : (
