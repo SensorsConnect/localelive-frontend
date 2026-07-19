@@ -5,6 +5,10 @@ import { useMapContext } from './MapContext'
 import PlaceCard from '../PlaceCard/PlaceCard'
 import { useTheme } from '@/components/Themes'
 
+function getTourFocusPlaceIndex(count: number) {
+  return Math.min(2, Math.max(count - 1, 0))
+}
+
 export default function PlaceCardStrip() {
   const { activePlaces, selectedPlaceId, hoveredPlaceId, setSelectedPlaceId, setHoveredPlaceId } = useMapContext()
   const { resolvedTheme } = useTheme()
@@ -21,6 +25,8 @@ export default function PlaceCardStrip() {
 
   if (activePlaces.length === 0) return null
 
+  const tourFocusPlaceIndex = getTourFocusPlaceIndex(activePlaces.length)
+
   return (
     <div className="absolute bottom-0 left-0 right-0 z-10 hidden md:block">
       {/* Gradient fade at top */}
@@ -33,6 +39,7 @@ export default function PlaceCardStrip() {
           {activePlaces.map((place, index) => (
             <div
               key={place.id}
+              data-tour={index === tourFocusPlaceIndex ? 'place-card-tour-target' : undefined}
               data-place-id={place.id}
               className="snap-start flex-shrink-0"
               style={{ animation: `cardEntrance 0.4s ease-out ${index * 75}ms both` }}

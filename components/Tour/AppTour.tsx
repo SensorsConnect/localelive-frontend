@@ -10,6 +10,10 @@ import { config } from '@/utils/environment'
 const TOUR_STORAGE_KEY = 'localelive_tour_done'
 const DEMO_QUERY = 'find a coffee shop close to me'
 
+function getTourFocusPlaceIndex(count: number) {
+  return Math.min(2, Math.max(count - 1, 0))
+}
+
 // ─── Tour step definitions ───────────────────────────────────────────────────
 // To add, reorder, or update steps, edit the arrays below.
 // Targets use stable data-tour attributes — never fragile class names.
@@ -83,7 +87,7 @@ const MOBILE_STEPS: Step[] = [
 ]
 
 const RESULTS_STEP_DESKTOP: Step = {
-  target: '[data-tour="place-cards"]',
+  target: '[data-tour="place-card-tour-target"]',
   title: 'Your results',
   content:
     'Here are the results! Each card shows live occupancy, travel time, and open/closed status. Click a card to see full details.',
@@ -351,9 +355,9 @@ export default function AppTour({ run, onStop }: AppTourProps) {
         return
       }
 
-      // When Next is clicked on the results step, select the first place via context
-      // so the detail panel opens. Tour pauses here; the selectedPlaceId effect inserts
-      // the detail step and advances stepIndex when the selection registers.
+      // When Next is clicked on the results step, select the same place the tour is
+      // targeting so the detail panel matches the highlighted card. Tour pauses here;
+      // the selectedPlaceId effect inserts the detail step and advances stepIndex.
       // A 5 s fallback prevents a permanent hang.
       if (
         type === EVENTS.STEP_AFTER &&
@@ -362,9 +366,9 @@ export default function AppTour({ run, onStop }: AppTourProps) {
         action !== 'prev' &&
         !isMobile
       ) {
-        const firstId = activePlaces[0]?.id
-        if (firstId) {
-          setSelectedPlaceId(firstId)
+        const focusedPlaceId = activePlaces[getTourFocusPlaceIndex(activePlaces.length)]?.id
+        if (focusedPlaceId) {
+          setSelectedPlaceId(focusedPlaceId)
         }
         // Fallback: if selection never triggers the detail effect, advance anyway
         cardFallbackTimerRef.current = setTimeout(() => {
